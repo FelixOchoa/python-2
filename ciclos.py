@@ -11,6 +11,7 @@
 
 # Un bucle para garantizar que el mes introducido es correcto. Versión alternativa.
 
+# felix estuvo aquí
 mes_correcto = False
 while not mes_correcto:
     mes = int(input("Introduzca el mes del año (entre 1 y 12):"))
