@@ -1,11 +1,3 @@
-## Ciclo While
-
-# contador = 1
-#
-# while contador <= 5:
-#     print(contador)
-#     contador += 1   # contador = contador + 1  # Incrementa el valor del contador en 1
-
 # Un bucle para garantizar que el mes introducido es correcto
 
 # mes = int(input("Introduzca el mes del año (entre 1 y 12): "))
