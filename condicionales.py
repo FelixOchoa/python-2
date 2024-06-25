@@ -1,5 +1,5 @@
-# Ejemplos de condicionales en Python
-# 1. Se determina qué número es mayor de dos números dados.
+ Ejemplos de condicionales en Python
+ 1. Se determina qué número es mayor de dos números dados.
 
 # num1 = float(input("Digita el primer número: "))
 # num2 = float(input("Digita el segundo número: "))
