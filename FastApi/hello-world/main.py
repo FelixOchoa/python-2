@@ -1,8 +1,10 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
+from database.connection import cursor
 
 app = FastAPI()
 
+restaurants = []
 
 class Restaurant(BaseModel):
     name: str
@@ -12,27 +14,6 @@ class Restaurant(BaseModel):
     phone: str
     email: str
 
-
-restaurants = [
-    {
-        "ID": 1,
-        "name": "La Casa de Toño",
-        "username": "lacasadetoño",
-        "type": "Mexicana",
-        "address": "Av. Insurgentes Sur 434",
-        "phone": "55 1234 5678",
-        "email": "lacasadetoño@example.com"
-    },
-    {
-        "ID": 2,
-        "name": "El Califa",
-        "username": "elcalifa",
-        "type": "Tacos",
-        "address": "Av. Revolución 123",
-        "phone": "55 8765 4321",
-        "email": "elcalifa@example.com"
-    },
-]
 
 
 # Create
@@ -48,6 +29,26 @@ def root():
 
 @app.get("/restaurants")
 def get_restaurants():
+    query = cursor.execute("SELECT * FROM restaurants")
+    query = cursor.fetchall()
+
+    for restaurant in query:
+        if (restaurant and len(query) > 0):
+            restaurant_json = {
+                "id": restaurant[0],
+                "name": restaurant[1],
+                "email": restaurant[2],
+                "phone": restaurant[3],
+                "open_hour": restaurant[4],
+                "closed_hour": restaurant[5],
+                "description": restaurant[6],
+                "avatar": restaurant[7],
+                "nit": restaurant[8],
+                "id_user": restaurant[9]
+            }
+
+            restaurants.append(restaurant_json)
+
     return {
         "data": restaurants
     }
