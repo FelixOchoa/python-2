@@ -1,25 +1,24 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-from database.connection import cursor
-
+from database.connection import cursor, connection
+from utils.restaurant import parseRestaurantToJSON, validateEmptyFields
+import time
 app = FastAPI()
 
 restaurants = []
 
+
 class Restaurant(BaseModel):
     name: str
-    username: str
-    type: str
-    address: str
-    phone: str
     email: str
+    phone: str
+    open_hour: str
+    closed_hour: str
+    description: str
+    avatar: str
+    nit: str
+    id_user: int
 
-
-
-# Create
-# @app.post()
-
-# Read
 
 @app.get("/")
 def root():
@@ -34,19 +33,7 @@ def get_restaurants():
 
     for restaurant in query:
         if (restaurant and len(query) > 0):
-            restaurant_json = {
-                "id": restaurant[0],
-                "name": restaurant[1],
-                "email": restaurant[2],
-                "phone": restaurant[3],
-                "open_hour": restaurant[4],
-                "closed_hour": restaurant[5],
-                "description": restaurant[6],
-                "avatar": restaurant[7],
-                "nit": restaurant[8],
-                "id_user": restaurant[9]
-            }
-
+            restaurant_json = parseRestaurantToJSON(restaurant)
             restaurants.append(restaurant_json)
 
     return {
@@ -54,39 +41,51 @@ def get_restaurants():
     }
 
 
-@app.get("/restaurant/{username}")
-def get_restaurant(username: str):
-    for restaurant in restaurants:
-        if restaurant["username"] == username:
+@app.get("/restaurant-by-user-document/{document}")
+def get_restaurant_by_user_document(document: str):
+    try:
+        query_text = f'SELECT r.id, r.name, r.email, r.phone, r.open_hour, r.closed_hour, r.description, r.avatar, r.nit FROM users u JOIN restaurants r ON u.id = r.id_user WHERE document = {document}'
+        query = cursor.execute(query_text)
+        query = cursor.fetchall()
+
+        if (len(query) <= 0):
             return {
-                "data": restaurant
+                "message": "No se encontró información de los restaurantes asociados a este usuario.",
+                "statusCode": 404
             }
-    else:
+
+        list_restaurant = []
+        for restaurant in query:
+            restaurant_json = parseRestaurantToJSON(restaurant)
+            list_restaurant.append(restaurant_json)
+
         return {
-            "message": "Restaurante no encontrado."
+            "data": list_restaurant,
+            "statusCode": 200
+        }
+    except Exception as e:
+        return {
+            "message": f"Ocurrió el siguiente error: {e}",
+            "statusCode": 500
         }
 
 
 @app.post("/restaurant")
 def create_restaurant(restaurant: Restaurant):
     try:
-        indice = len(restaurants) + 1
-        diccionario = {
-            "ID": indice,
-            "name": restaurant.name,
-            "username": restaurant.username,
-            "type": restaurant.type,
-            "address": restaurant.address,
-            "phone": restaurant.phone,
-            "email": restaurant.email
-        }
-
-        restaurants.append(diccionario)
+        if (validateEmptyFields(restaurant)):
+            query_text = f'INSERT INTO restaurants (name, email, phone, open_hour, closed_hour, description, avatar, nit, id_user) VALUES ("{restaurant.name}", "{restaurant.email}", "{restaurant.phone}", "{restaurant.open_hour}", "{restaurant.closed_hour}", "{restaurant.description}", "{restaurant.avatar}", "{restaurant.nit}", "{restaurant.id_user}")'
+            query = cursor.execute(query_text)
+            connection.commit()
+        else:
+            return {
+                "message": "Todos los campos son obligatorios.",
+                "statusCode": 400
+            }
 
         return {
             "message": "Restaurante añadido correctamente.",
             "statusCode": 200,
-            "infoAñadida": diccionario
         }
 
     except Exception as e:
@@ -163,6 +162,7 @@ def update_restaurant_put(username: str, fields: dict):
             "statusCode": 500
         }
 
+
 @app.delete("/restaurant/{username}")
 def delete_restaurant(username: str):
     try:
@@ -183,11 +183,3 @@ def delete_restaurant(username: str):
             "message": f"Ocurrió el siguiente error: {e}",
             "statusCode": 500
         }
-# Update
-
-# @app.put()
-# @app.patch()
-
-# Delete
-
-# @app.delete()
