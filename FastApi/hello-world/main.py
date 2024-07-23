@@ -2,7 +2,9 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from database.connection import cursor, connection
 from utils.restaurant import parseRestaurantToJSON, validateEmptyFields
+from repository.restaurant_dal import get_restaurant_by_document_DAL, get_restaurant_by_nit, put_restaurant, delete_restaurant_dal
 import time
+
 app = FastAPI()
 
 restaurants = []
@@ -17,7 +19,6 @@ class Restaurant(BaseModel):
     description: str
     avatar: str
     nit: str
-    id_user: int
 
 
 @app.get("/")
@@ -44,25 +45,26 @@ def get_restaurants():
 @app.get("/restaurant-by-user-document/{document}")
 def get_restaurant_by_user_document(document: str):
     try:
-        query_text = f'SELECT r.id, r.name, r.email, r.phone, r.open_hour, r.closed_hour, r.description, r.avatar, r.nit FROM users u JOIN restaurants r ON u.id = r.id_user WHERE document = {document}'
-        query = cursor.execute(query_text)
-        query = cursor.fetchall()
+        if (document == ""):
+            return {
+                "message": "No se puede enviar campos vacíos.",
+                "statusCode": 400
+            }
 
-        if (len(query) <= 0):
+        result = get_restaurant_by_document_DAL(document)
+
+        if (result["success"] == False):
             return {
                 "message": "No se encontró información de los restaurantes asociados a este usuario.",
                 "statusCode": 404
             }
 
-        list_restaurant = []
-        for restaurant in query:
-            restaurant_json = parseRestaurantToJSON(restaurant)
-            list_restaurant.append(restaurant_json)
+        if (result["success"] == True):
+            return {
+                "data": result["data"],
+                "statusCode": 200
+            }
 
-        return {
-            "data": list_restaurant,
-            "statusCode": 200
-        }
     except Exception as e:
         return {
             "message": f"Ocurrió el siguiente error: {e}",
@@ -95,31 +97,47 @@ def create_restaurant(restaurant: Restaurant):
         }
 
 
-@app.patch("/restaurant/{username}")
-def update_restaurant_patch(username: str, restaurant: Restaurant):
+@app.put("/restaurant/{nit}")
+def update_restaurant_put(nit: str, restaurant: Restaurant):
     try:
-        for i in range(len(restaurants)):
-            if restaurants[i]["username"] == username:
-                nuevoRestaurant = {
-                    "ID": restaurants[i]["ID"],
-                    "name": restaurant.name,
-                    "username": restaurant.username,
-                    "type": restaurant.type,
-                    "address": restaurant.address,
-                    "phone": restaurant.phone,
-                    "email": restaurant.email
-                }
-                restaurants[i] = nuevoRestaurant
-                return {
-                    "message": "Restaurante actualizado correctamente.",
-                    "statusCode": 200,
-                    "infoActualizada": nuevoRestaurant,
-                }
-        else:
+        if (nit == ""):
             return {
-                "message": "Restaurante no encontrado.",
+                "message": "No se puede enviar campos vacíos.",
+                "statusCode": 400
+            }
+
+        result = get_restaurant_by_nit(nit)
+
+        if (result["success"] == False):
+            return {
+                "message": "No se encontró información relacionada a un restaurante.",
                 "statusCode": 404
             }
+
+        restaurant_copy = {
+            "name": restaurant.name,
+            "email": restaurant.email,
+            "phone": restaurant.phone,
+            "open_hour": restaurant.open_hour,
+            "closed_hour": restaurant.closed_hour,
+            "description": restaurant.description,
+            "avatar": restaurant.avatar,
+            "nit": restaurant.nit,
+        }
+
+        result_put = put_restaurant(restaurant_copy)
+
+        if (result_put["success"] == False):
+            return {
+                "message": result_put["message"],
+                "statusCode": 500
+            }
+
+        return {
+            "message": result_put["message"],
+            "statusCode": 200
+        }
+
     except Exception as e:
         return {
             "message": f"Ocurrió el siguiente error: {e}",
@@ -127,8 +145,8 @@ def update_restaurant_patch(username: str, restaurant: Restaurant):
         }
 
 
-@app.put("/restaurant/{username}")
-def update_restaurant_put(username: str, fields: dict):
+@app.patch("/restaurant/{username}")
+def update_restaurant_patch(username: str, fields: dict):
     try:
         for i in range(len(restaurants)):
             if restaurants[i]["username"] == username:
@@ -163,21 +181,36 @@ def update_restaurant_put(username: str, fields: dict):
         }
 
 
-@app.delete("/restaurant/{username}")
-def delete_restaurant(username: str):
+@app.delete("/restaurant/{nit}")
+def delete_restaurant(nit: str):
     try:
-        for i in range(len(restaurants)):
-            if restaurants[i]["username"] == username:
-                restaurants.pop(i)
-                return {
-                    "message": "Restaurante eliminado correctamente.",
-                    "statusCode": 200
-                }
-        else:
+        if (nit == ""):
             return {
-                "message": "Restaurante no encontrado.",
+                "message": "No se puede enviar campos vacíos.",
+                "statusCode": 400
+            }
+
+        result = get_restaurant_by_nit(nit)
+
+        if (result["success"] == False):
+            return {
+                "message": "No se encontró información relacionada a un restaurante.",
                 "statusCode": 404
             }
+
+        result_delete = delete_restaurant_dal(result["data"])
+
+        if (result_delete["success"] == False):
+            return {
+                "message": result_delete["message"],
+                "statusCode": 500
+            }
+
+        return {
+            "message": result_delete["message"],
+            "statusCode": 200
+        }
+
     except Exception as e:
         return {
             "message": f"Ocurrió el siguiente error: {e}",
